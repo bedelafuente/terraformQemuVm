@@ -64,8 +64,9 @@ resource "libvirt_domain" "ubuntu-vm" {
   }
 }
 
+# try(expresion que puede fallar, expresion por defecto)
 output "vm_ip" {
-  value       = libvirt_domain.ubuntu-vm.network_interface[0].addresses[0]
+  value       = try(libvirt_domain.ubuntu-vm.network_interface[0].addresses[0], "Sin ip (VM shutted down)")
   description = "La ip de la maquina virtual"
 }
 

@@ -1,0 +1,326 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <meta name="description" content="Servidor web desplegado con Terraform, KVM y Ansible como parte de un laboratorio DevOps." />
+  <title>DevOps Lab — Nginx Server</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700;900&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:        #0a0f1e;
+      --surface:   rgba(255,255,255,0.04);
+      --border:    rgba(255,255,255,0.08);
+      --accent:    #4ade80;
+      --accent2:   #38bdf8;
+      --accent3:   #a78bfa;
+      --text:      #e2e8f0;
+      --muted:     #64748b;
+    }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      font-family: 'Inter', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 2rem;
+      position: relative;
+      overflow-x: hidden;
+    }
+
+    /* ── Animated background ── */
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background:
+        radial-gradient(ellipse 80% 60% at 20% 0%,  rgba(74,222,128,.12) 0%, transparent 60%),
+        radial-gradient(ellipse 60% 50% at 80% 100%, rgba(56,189,248,.10) 0%, transparent 60%),
+        radial-gradient(ellipse 50% 40% at 50% 50%,  rgba(167,139,250,.06) 0%, transparent 70%);
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    .wrapper {
+      position: relative;
+      z-index: 1;
+      width: 100%;
+      max-width: 820px;
+      display: flex;
+      flex-direction: column;
+      gap: 1.5rem;
+    }
+
+    /* ── Status badge ── */
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: .5rem;
+      background: rgba(74,222,128,.12);
+      border: 1px solid rgba(74,222,128,.3);
+      color: var(--accent);
+      font-size: .75rem;
+      font-weight: 600;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+      padding: .35rem .85rem;
+      border-radius: 999px;
+      width: fit-content;
+    }
+
+    .badge .dot {
+      width: 7px; height: 7px;
+      background: var(--accent);
+      border-radius: 50%;
+      animation: pulse 1.8s ease-in-out infinite;
+    }
+
+    @keyframes pulse {
+      0%,100% { opacity: 1; transform: scale(1); }
+      50%      { opacity: .4; transform: scale(.6); }
+    }
+
+    /* ── Hero card ── */
+    .hero {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 1.5rem;
+      padding: 3rem 3rem 2.5rem;
+      backdrop-filter: blur(12px);
+    }
+
+    .hero h1 {
+      font-size: clamp(2rem, 5vw, 3.2rem);
+      font-weight: 900;
+      line-height: 1.1;
+      background: linear-gradient(135deg, #fff 30%, var(--accent2) 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      margin-bottom: .75rem;
+    }
+
+    .hero p {
+      color: var(--muted);
+      font-size: 1.05rem;
+      line-height: 1.7;
+      max-width: 540px;
+    }
+
+    /* ── Pipeline steps ── */
+    .pipeline {
+      display: flex;
+      align-items: center;
+      gap: 0;
+      flex-wrap: wrap;
+      margin-top: 2rem;
+    }
+
+    .step {
+      display: flex;
+      align-items: center;
+      gap: .5rem;
+      font-size: .8rem;
+      font-weight: 600;
+      color: var(--muted);
+      transition: color .3s;
+    }
+
+    .step.done { color: var(--accent); }
+
+    .step .icon {
+      width: 32px; height: 32px;
+      border-radius: 50%;
+      border: 1.5px solid currentColor;
+      display: flex; align-items: center; justify-content: center;
+      font-size: .85rem;
+      flex-shrink: 0;
+    }
+
+    .step.done .icon {
+      background: rgba(74,222,128,.15);
+    }
+
+    .arrow {
+      color: var(--border);
+      font-size: 1.2rem;
+      margin: 0 .5rem;
+      flex-shrink: 0;
+    }
+
+    /* ── Stats grid ── */
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+      gap: 1rem;
+    }
+
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 1rem;
+      padding: 1.4rem 1.5rem;
+      transition: border-color .3s, transform .3s;
+      cursor: default;
+    }
+
+    .card:hover {
+      border-color: rgba(255,255,255,.18);
+      transform: translateY(-3px);
+    }
+
+    .card .label {
+      font-size: .7rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: .08em;
+      color: var(--muted);
+      margin-bottom: .4rem;
+    }
+
+    .card .value {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 1rem;
+      font-weight: 600;
+      color: var(--text);
+    }
+
+    .card .value.green  { color: var(--accent); }
+    .card .value.blue   { color: var(--accent2); }
+    .card .value.purple { color: var(--accent3); }
+
+    /* ── Stack section ── */
+    .stack-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 1rem;
+      padding: 1.5rem;
+    }
+
+    .stack-card h2 {
+      font-size: .75rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: .08em;
+      color: var(--muted);
+      margin-bottom: 1rem;
+    }
+
+    .stack-list {
+      display: flex;
+      flex-wrap: wrap;
+      gap: .6rem;
+    }
+
+    .tag {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: .78rem;
+      padding: .3rem .75rem;
+      border-radius: .4rem;
+      font-weight: 600;
+    }
+
+    .tag.green  { background: rgba(74,222,128,.12);  color: var(--accent);  border: 1px solid rgba(74,222,128,.25); }
+    .tag.blue   { background: rgba(56,189,248,.12);  color: var(--accent2); border: 1px solid rgba(56,189,248,.25); }
+    .tag.purple { background: rgba(167,139,250,.12); color: var(--accent3); border: 1px solid rgba(167,139,250,.25); }
+    .tag.gray   { background: rgba(255,255,255,.05); color: var(--muted);   border: 1px solid var(--border); }
+
+    /* ── Footer ── */
+    footer {
+      text-align: center;
+      color: var(--muted);
+      font-size: .78rem;
+    }
+  </style>
+</head>
+<body>
+  <div class="wrapper">
+
+    <div class="badge">
+      <span class="dot"></span>
+      Servidor activo
+    </div>
+
+    <!-- Hero -->
+    <div class="hero">
+      <h1>DevOps Lab</h1>
+      <p>
+        Máquina virtual Ubuntu Server 22.04 aprovisionada con <strong>Terraform + KVM</strong>
+        y configurada con <strong>Ansible</strong>. Este servidor Nginx fue desplegado
+        de forma completamente automatizada.
+      </p>
+
+      <div class="pipeline">
+        <div class="step done">
+          <span class="icon">⚡</span>
+          <span>Terraform</span>
+        </div>
+        <span class="arrow">→</span>
+        <div class="step done">
+          <span class="icon">☁️</span>
+          <span>Cloud-Init</span>
+        </div>
+        <span class="arrow">→</span>
+        <div class="step done">
+          <span class="icon">🔧</span>
+          <span>Ansible</span>
+        </div>
+        <span class="arrow">→</span>
+        <div class="step done">
+          <span class="icon">🌐</span>
+          <span>Nginx</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Stats -->
+    <div class="grid">
+      <div class="card">
+        <div class="label">Sistema operativo</div>
+        <div class="value blue">Ubuntu 22.04 LTS</div>
+      </div>
+      <div class="card">
+        <div class="label">Servidor web</div>
+        <div class="value green">Nginx ✓ running</div>
+      </div>
+      <div class="card">
+        <div class="label">Hipervisor</div>
+        <div class="value purple">KVM / libvirt</div>
+      </div>
+      <div class="card">
+        <div class="label">Despliegue</div>
+        <div class="value">Ansible playbook</div>
+      </div>
+    </div>
+
+    <!-- Stack -->
+    <div class="stack-card">
+      <h2>Stack tecnológico</h2>
+      <div class="stack-list">
+        <span class="tag green">Terraform</span>
+        <span class="tag green">Ansible</span>
+        <span class="tag blue">Nginx</span>
+        <span class="tag blue">Ubuntu 22.04</span>
+        <span class="tag purple">KVM / QEMU</span>
+        <span class="tag purple">libvirt</span>
+        <span class="tag gray">Cloud-Init</span>
+        <span class="tag gray">SSH keypair</span>
+      </div>
+    </div>
+
+    <footer>
+      Lab DevOps local — Terraform + Ansible + KVM &nbsp;·&nbsp; 2026
+    </footer>
+
+  </div>
+</body>
+</html>
