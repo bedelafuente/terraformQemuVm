@@ -1,0 +1,190 @@
+{
+  "version": 4,
+  "terraform_version": "1.15.8",
+  "serial": 94,
+  "lineage": "fd663662-0995-23ec-5df3-e591606461c5",
+  "outputs": {
+    "vm_ip": {
+      "value": "192.168.122.52",
+      "type": "string"
+    },
+    "vm_mac": {
+      "value": "52:54:00:72:72:48",
+      "type": "string"
+    },
+    "vm_name": {
+      "value": "ubuntu-vm",
+      "type": "string"
+    }
+  },
+  "resources": [
+    {
+      "mode": "managed",
+      "type": "libvirt_cloudinit_disk",
+      "name": "commoninit",
+      "provider": "provider[\"registry.terraform.io/dmacvicar/libvirt\"]",
+      "instances": [
+        {
+          "schema_version": 0,
+          "attributes": {
+            "id": "/var/lib/libvirt/images/commoninit.iso;5b6f735f-a778-4818-aaf7-e8f35802b94e",
+            "meta_data": "",
+            "name": "commoninit.iso",
+            "network_config": "",
+            "pool": "default",
+            "user_data": "#cloud-config\nssh_authorized_keys:\n  - ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAACAQCvweCIx5p62Y90snJU9RjS08Yu3iBCQN5NegSKc8zYRRA4Sj0E2M8Yw4Us8+O7owzFD/0Ptra1rt7qXwmLejg74rHTfgB0+zAAfgjNpTtPihaSVbhTBfOk65kPhvRmAowfCNPiJIHpalrtXsIc5qcNwrxD1ykmYUU+MbQ1jaFiYWg/uGBnlrki27IbvQDtoy7M99yWIsSLxJ7d+EmL79Gn7bz3WxD32HPrDww69ioTE0i78snLLmCxT5DSI91q0fGgH2aspoXlVDXOruA/UTryzkOnKL1mGiQwBds+BwhUT2CNym+Kzv/uYBiBkvUBEQ57r9pAHHkqfDmJeqkxAZj+PL9apgcuR+0rXrlW7a7vx3qewAbbIZpVQM0KcmViCfqztBgwsEsGrrEKjxMQ2wfEvTCWXQSl/cIiAMfEs/635/+8qMvLpSLyI3eTNwI1/61i/+BBApbQ77jNxDTrj43FLWWqjmB2XbE0jJeqD+OiXpVdWtYNOxLB+RugRrEhcV7qK0r/w+/R88mu/6kFrO6hv2YX/PW2T6LFBfjAirUdVoeybcFM3GDHPMbM753oAmmXuJkC8A/gItS8S2BgX6HWyyYZyN2nBEfvMhppKCscE+1lJSltur5yR1TvgnrDOkVbpt4fbv2Xmhgi5REppocc076oM6wh2VTZTLAUL6lzpw== benja@AF15\n\nchpasswd:\n  expire: false\n  users:\n    - name: ubuntu\n      password: devops1234\n      type: text\n"
+          },
+          "sensitive_attributes": [],
+          "identity_schema_version": 0,
+          "private": "bnVsbA=="
+        }
+      ]
+    },
+    {
+      "mode": "managed",
+      "type": "libvirt_domain",
+      "name": "ubuntu-vm",
+      "provider": "provider[\"registry.terraform.io/dmacvicar/libvirt\"]",
+      "instances": [
+        {
+          "schema_version": 0,
+          "attributes": {
+            "arch": "x86_64",
+            "autostart": false,
+            "boot_device": [],
+            "cloudinit": "/var/lib/libvirt/images/commoninit.iso;5b6f735f-a778-4818-aaf7-e8f35802b94e",
+            "cmdline": null,
+            "console": [
+              {
+                "source_host": "127.0.0.1",
+                "source_path": "",
+                "source_service": "0",
+                "target_port": "0",
+                "target_type": "serial",
+                "type": "pty"
+              }
+            ],
+            "coreos_ignition": null,
+            "cpu": [
+              {
+                "mode": "custom"
+              }
+            ],
+            "description": "",
+            "disk": [
+              {
+                "block_device": "",
+                "file": "",
+                "scsi": false,
+                "url": "",
+                "volume_id": "/var/lib/libvirt/images/UbuntuServer",
+                "wwn": ""
+              }
+            ],
+            "emulator": "/usr/bin/qemu-system-x86_64",
+            "filesystem": [],
+            "firmware": null,
+            "fw_cfg_name": "opt/com.coreos/config",
+            "graphics": [],
+            "id": "00b10af3-90c6-4ecc-8883-aa68353588ee",
+            "initrd": "",
+            "kernel": "",
+            "machine": "ubuntu",
+            "memory": 2048,
+            "metadata": null,
+            "name": "ubuntu-vm",
+            "network_interface": [
+              {
+                "addresses": [
+                  "192.168.122.52"
+                ],
+                "bridge": "",
+                "hostname": "",
+                "mac": "52:54:00:72:72:48",
+                "macvtap": "",
+                "network_id": "9159c8a4-abbe-4c5c-94b3-96804a4db6b7",
+                "network_name": "default",
+                "passthrough": "",
+                "vepa": "",
+                "wait_for_lease": true
+              }
+            ],
+            "nvram": [],
+            "qemu_agent": false,
+            "running": true,
+            "timeouts": null,
+            "tpm": [],
+            "type": "kvm",
+            "vcpu": 2,
+            "video": [],
+            "xml": []
+          },
+          "sensitive_attributes": [],
+          "identity_schema_version": 0,
+          "private": "eyJlMmJmYjczMC1lY2FhLTExZTYtOGY4OC0zNDM2M2JjN2M0YzAiOnsiY3JlYXRlIjozMDAwMDAwMDAwMDB9fQ==",
+          "dependencies": [
+            "libvirt_cloudinit_disk.commoninit",
+            "libvirt_volume.UbuntuServer",
+            "libvirt_volume.ubuntu_base"
+          ]
+        }
+      ]
+    },
+    {
+      "mode": "managed",
+      "type": "libvirt_volume",
+      "name": "UbuntuServer",
+      "provider": "provider[\"registry.terraform.io/dmacvicar/libvirt\"]",
+      "instances": [
+        {
+          "schema_version": 0,
+          "attributes": {
+            "base_volume_id": "/var/lib/libvirt/images/ubuntu_base.qcow2",
+            "base_volume_name": null,
+            "base_volume_pool": null,
+            "format": "qcow2",
+            "id": "/var/lib/libvirt/images/UbuntuServer",
+            "name": "UbuntuServer",
+            "pool": "default",
+            "size": 8589934592,
+            "source": null,
+            "xml": []
+          },
+          "sensitive_attributes": [],
+          "identity_schema_version": 0,
+          "private": "bnVsbA==",
+          "dependencies": [
+            "libvirt_volume.ubuntu_base"
+          ]
+        }
+      ]
+    },
+    {
+      "mode": "managed",
+      "type": "libvirt_volume",
+      "name": "ubuntu_base",
+      "provider": "provider[\"registry.terraform.io/dmacvicar/libvirt\"]",
+      "instances": [
+        {
+          "schema_version": 0,
+          "attributes": {
+            "base_volume_id": null,
+            "base_volume_name": null,
+            "base_volume_pool": null,
+            "format": "qcow2",
+            "id": "/var/lib/libvirt/images/ubuntu_base.qcow2",
+            "name": "ubuntu_base.qcow2",
+            "pool": "default",
+            "size": 2361393152,
+            "source": "/home/benja/osimages/jammy-server-cloudimg-amd64.img",
+            "xml": []
+          },
+          "sensitive_attributes": [],
+          "identity_schema_version": 0,
+          "private": "bnVsbA=="
+        }
+      ]
+    }
+  ],
+  "check_results": null
+}
