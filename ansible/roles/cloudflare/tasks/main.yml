@@ -1,0 +1,24 @@
+---
+- name: Descargar paquete cloudflared
+  get_url:
+    url: https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64.deb
+    dest: /tmp/cloudflared.deb
+    mode: '0644'
+
+- name: Instalar paquete cloudflared
+  apt:
+    deb: /tmp/cloudflared.deb
+
+- name: Iniciar Cloudflare Tunnel en segundo plano como servicio
+  command: systemd-run --unit=cloudflared-tunnel cloudflared tunnel --url http://localhost:80
+
+- name: Esperar 5 segundos a que el túnel se conecte a cloudflare
+  command: sleep 5
+  
+- name: Leer URL pública desde los registros del sistema
+  command: journalctl -u cloudflared-tunnel --no-pager
+  register: tunnel_logs
+
+- name: Mostrar la URL pública del sitio web
+  debug:
+    msg: "🌐 ¡Tu sitio web está en internet! Accede desde tu celular en: {{ tunnel_logs.stdout | regex_search('https://[a-zA-Z0-9-]+\\.trycloudflare\\.com') }}"
