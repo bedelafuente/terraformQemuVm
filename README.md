@@ -1,232 +1,140 @@
-# 🖥️ Lab DevOps: Terraform + KVM + Ansible
+# 🖥️ Lab DevOps: Terraform + KVM/libvirt + Ansible (Roles) + Cloudflare Zero Trust
 
-Proyecto de aprendizaje para automatizar la creación de máquinas virtuales locales con **Terraform** y configurarlas con **Ansible**.
+Proyecto de automatización de infraestructura como código (**IaC**) y gestión de configuración modular para desplegar servidores web sobre **KVM/libvirt** y exponerlos de forma segura a internet con **Cloudflare Tunnels**.
 
 ---
 
 ## 📐 Arquitectura del Proyecto
 
-```
-Tu máquina (host)
-└── KVM/libvirt (hipervisor)
-    └── ubuntu-vm (máquina virtual)
-        ├── Ubuntu Server 22.04 (Jammy)
-        ├── Usuario: ubuntu (con sudo)
-        ├── Acceso SSH por llave pública
-        └── Red NAT 192.168.122.0/24
-```
-
-### Flujo de creación con Terraform
-
-```
-main.tf
-  ├── libvirt_volume "ubuntu_base"     → Registra la imagen .img base (solo lectura)
-  ├── libvirt_volume "UbuntuServer"    → Crea disco VM (Copy-on-Write desde la base, 8GB)
-  ├── libvirt_cloudinit_disk "commoninit" → ISO con config inicial (usuario, SSH, contraseña)
-  └── libvirt_domain "ubuntu-vm"       → La VM: 2 vCPU, 2GB RAM, red NAT
+```text
+Tu Máquina (Host)
+└── KVM / libvirt (Hipervisor)
+    └── ubuntu-vm (Máquina Virtual Ubuntu 22.04)
+        ├── Red NAT Interna: 192.168.122.0/24
+        ├── Ansible Config Management (Roles)
+        │   ├── Rol 1: Nginx (Servidor Web + HTML Personalizado)
+        │   └── Rol 2: Cloudflare (Agente cloudflared)
+        └── Cloudflare Zero Trust Tunnel
+            └── 🌐 Enlace HTTPS Público (TryCloudflare)
 ```
 
 ---
 
-## 📁 Estructura de Archivos
+## 🏗️ Flujo de Automatización (End-to-End)
 
+```text
+[ Terraform ] ──(Crea VM & Red)──> [ Ansible Roles ] ──(Configura Nginx)──> [ Cloudflare Tunnel ] ──(Acceso Global HTTPS)
 ```
+
+1. **Terraform (IaC)**: Provisiona el volumen base `qcow2`, el disco `cloud-init` (con claves SSH) y la máquina virtual parametrizada.
+2. **Ansible (Roles)**:
+   * **`roles/nginx`**: Actualiza paquetes, instala Nginx, habilita el servicio y despliega el sitio web personalizado.
+   * **`roles/cloudflare`**: Instala el binario `cloudflared`, inicia el túnel saliente como servicio en segundo plano y extrae la URL pública.
+3. **Cloudflare Zero Trust**: Expone la página web a internet sin abrir puertos en el router ni requerir IP pública.
+
+---
+
+## 📁 Estructura del Repositorio
+
+```text
 preparacionDevOps/
-├── main.tf              # Infraestructura completa en Terraform
-├── variables.tf         # Declaración de variables (a implementar)
-├── terraform.tfvars     # Valores de las variables (a implementar)
-├── reiniciarLanzar.sh   # Script: destruye y recrea toda la infra
-├── limpiarVirsh.sh      # Script: limpia recursos huérfanos en libvirt
-└── README.md            # Este archivo
+├── main.tf                 # Recursos principales de infraestructura (libvirt)
+├── variables.tf            # Declaración parametrizada de variables de Terraform
+├── outputs.tf              # Salidas del estado (IP, MAC, Nombre VM)
+├── reiniciarLanzar.sh      # Script de automatización End-to-End
+├── limpiarVirsh.sh         # Script de mantenimiento/limpieza de libvirt
+├── .gitignore              # Exclusión de binarios y estados locales
+├── README.md               # Documentación del laboratorio
+└── ansible/
+    ├── inventory.ini       # Inventario de hosts dinámico
+    ├── site.yml            # Playbook orquestador principal
+    └── roles/
+        ├── nginx/          # Rol: Servidor Web Nginx
+        │   ├── tasks/main.yml
+        │   ├── handlers/main.yml
+        │   └── files/index.html
+        └── cloudflare/     # Rol: Exposición Zero Trust a Internet
+            └── tasks/main.yml
 ```
 
 ---
 
 ## ⚙️ Requisitos Previos
 
-### Software necesario
-- `terraform` (cualquier versión >= 1.0)
-- `libvirt` / `qemu-kvm` instalado y activo
-- `virsh` (cliente de línea de comandos para libvirt)
+### Software Necesario
+- `terraform` (v1.0+)
+- `ansible` y `ansible-playbook`
+- `libvirt` / `qemu-kvm` activo en el Host
+- `virsh` CLI
 
-### Configuración del sistema (hecha una sola vez)
-En `/etc/libvirt/qemu.conf` se deben tener estas líneas descomentadas:
-```ini
-user = "root"
-group = "root"
-security_driver = "none"
-```
-Luego reiniciar libvirt:
+### Imagen Cloud de Ubuntu
+Descargar la imagen Cloud de Ubuntu 22.04 (Jammy) en tu sistema:
 ```bash
-sudo systemctl restart libvirtd
-```
-> ⚠️ Esta configuración es solo válida para laboratorio local. En producción se configuran permisos granulares.
-
-### Imagen base de Ubuntu
-Se necesita la imagen Cloud de Ubuntu 22.04 en:
-```
-/home/benja/osimages/jammy-server-cloudimg-amd64.img
-```
-Descargable desde: https://cloud-images.ubuntu.com/jammy/current/
-
-### Llave SSH
-Tu llave pública en `~/.ssh/id_rsa.pub`. Si no existe:
-```bash
-ssh-keygen -t rsa -b 4096
+/home/benja/Descargas/ISOs/jammy-server-cloudimg-amd64.img
 ```
 
 ---
 
-## 🚀 Uso
+## 🚀 Despliegue Automatizado
 
-### Primera vez (inicializar Terraform)
-```bash
-terraform init
-```
-Descarga el proveedor `dmacvicar/libvirt`.
+Para desplegar o recrear todo el laboratorio en un solo comando:
 
-### Ver qué se va a crear (sin ejecutar nada)
-```bash
-terraform plan
-```
-
-### Crear la VM
-```bash
-terraform apply
-```
-Al finalizar, imprime:
-```
-vm_ip   = "192.168.122.X"
-vm_mac  = "52:54:00:XX:XX:XX"
-vm_name = "ubuntu-vm"
-```
-
-### Destruir la VM
-```bash
-terraform destroy
-```
-
-### Ciclo rápido destroy → apply (script)
 ```bash
 ./reiniciarLanzar.sh
 ```
 
----
-
-## 🔗 Conectarse a la VM
-
-### Por SSH (recomendado)
-```bash
-ssh ubuntu@<vm_ip>
-# Ejemplo: ssh ubuntu@192.168.122.234
-```
-No requiere contraseña (usa llave pública).
-
-### Por consola serie (para diagnóstico)
-```bash
-virsh console ubuntu-vm
-# Usuario: ubuntu
-# Contraseña: devops1234
-# Para salir: Ctrl + ]
-```
-
-### Ver la IP en cualquier momento
-```bash
-terraform output vm_ip
-```
+El script ejecutará automáticamente:
+1. Destrucción limpia de instancias anteriores.
+2. `terraform apply` parametrizado.
+3. Actualización de IP en el inventario de Ansible.
+4. Ejecución del playbook modular (`site.yml`).
+5. Impresión de la **URL HTTPS Pública** generada por Cloudflare.
 
 ---
 
-## 🧹 Limpieza de Recursos Huérfanos
+## 🧪 Comandos Manuales
 
-Si un `terraform apply` falla a la mitad, pueden quedar recursos huérfanos en libvirt que Terraform ya no conoce. Síntomas:
-- `Error: storage volume 'X' exists already`
-- `Error: domain 'ubuntu-vm' already exists`
-
-Diagnóstico:
+### Terraform
 ```bash
-virsh list --all         # Ver todas las VMs
-virsh vol-list default   # Ver todos los volúmenes
+# Inicializar proveedores
+terraform init
+
+# Validar sintaxis
+terraform validate
+
+# Planificar cambios
+terraform plan
+
+# Aplicar o destruir
+terraform apply -auto-approve
+terraform destroy -auto-approve
 ```
 
-Limpieza manual:
+### Ansible
 ```bash
-virsh undefine ubuntu-vm
-virsh vol-delete commoninit.iso --pool default
-virsh vol-delete UbuntuServer --pool default
-virsh vol-delete ubuntu_base.qcow2 --pool default
-```
-
-O usar el script (requiere revisar los nombres primero):
-```bash
-sudo bash limpiarVirsh.sh
+# Ejecutar playbook modular
+ansible-playbook -i ansible/inventory.ini ansible/site.yml
 ```
 
 ---
 
-## 💡 Conceptos Aprendidos
+## 🌐 Verificación y Acceso
 
-| Concepto | Descripción |
-|---|---|
-| **Provider** | Plugin que conecta Terraform con libvirt/KVM |
-| **Resource** | Cada elemento de infraestructura que Terraform gestiona |
-| **Output** | Valores que Terraform imprime al terminar (ej: IP de la VM) |
-| **`base_volume_id`** | Copy-on-Write: la VM comparte la imagen base sin copiarla |
-| **Cloud-Init** | Servicio que configura la VM en el primer arranque |
-| **`terraform plan`** | Muestra qué se va a crear/modificar/destruir SIN ejecutar nada |
-| **`terraform.tfstate`** | Archivo donde Terraform guarda el estado de la infra creada |
-| **`(known after apply)`** | Valor que solo se conoce después de crear el recurso (IPs, IDs, etc.) |
-
----
-
-## 🗺️ Hoja de Ruta: Siguientes Pasos
-
-### Fase 2: Variables y Reutilización
-- [ ] Declarar variables en `variables.tf` (nombre de VM, RAM, CPUs, IP base, etc.)
-- [ ] Asignar valores en `terraform.tfvars`
-- [ ] Referenciarlas en `main.tf` con `var.nombre_variable`
-
-### Fase 3: Ansible
-- [ ] Instalar Ansible en el host
-- [ ] Crear el archivo de inventario (`inventory.ini`) con la IP de la VM
-- [ ] Escribir un playbook básico (`playbook.yml`) para instalar paquetes
-- [ ] Ejecutar el playbook: `ansible-playbook -i inventory.ini playbook.yml`
-
-### Fase 4: Integración completa
-- [ ] Usar el output de Terraform para generar el inventario de Ansible automáticamente
-- [ ] Pasar archivos a la VM con `ansible` módulo `copy` o `scp`
-- [ ] Crear múltiples VMs con `count` o `for_each` en Terraform
-
----
-
-## 📤 Transferencia de Archivos a la VM
-
-Para copiar archivos a tu VM sin Ansible:
+### Acceso Local (LAN Host)
 ```bash
-# Copiar un archivo
-scp archivo.txt ubuntu@192.168.122.X:/home/ubuntu/
-
-# Copiar una carpeta completa
-scp -r mi_carpeta/ ubuntu@192.168.122.X:/home/ubuntu/
+curl http://<vm_ip>
 ```
 
-Con Ansible (más poderoso, lo veremos en Fase 3):
-```yaml
-- name: Copiar archivo a la VM
-  copy:
-    src: archivo_local.txt
-    dest: /home/ubuntu/archivo_local.txt
+### Acceso Remoto desde cualquier lugar (Red Móvil 4G/5G)
+Accede desde tu navegador o celular a la URL generada en la salida del rol `cloudflare`:
+```text
+https://xxxx.trycloudflare.com
 ```
 
 ---
 
-## 🐛 Problemas Conocidos y Soluciones
+## 🔒 Ventajas de la Arquitectura
 
-| Error | Causa | Solución |
-|---|---|---|
-| `Permission denied` al crear dominio | AppArmor / QEMU no corre como root | Configurar `user = "root"` en `qemu.conf` |
-| `volume 'X' exists already` | Recurso huérfano de apply fallido | `virsh vol-delete X --pool default` |
-| `domain 'ubuntu-vm' already exists` | VM huérfana de apply fallido | `virsh undefine ubuntu-vm` |
-| Cloud-Init no aplica config | `#cloud-config` no es la primera línea | Eliminar líneas en blanco antes del header |
-| SSH: `Permission denied (publickey)` | Llave SSH no aplicada por Cloud-Init | Verificar YAML de `user_data` y redesplegar |
-| Consola: `Login incorrect` | `chpasswd` con `password:valor` (sin espacio) | `password: valor` con espacio después de `:` |
+* **Modularidad y Escalabilidad**: Separación clara de responsabilidades con variables en Terraform y Roles en Ansible.
+* **Seguridad Zero Trust**: El servidor web no expone ningún puerto en el router doméstico.
+* **Idempotencia**: Se puede recrear el entorno completo sin errores en menos de 60 segundos.
